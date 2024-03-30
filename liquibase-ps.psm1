@@ -4,10 +4,48 @@ function SetupKeePass{
     param (
         $PathToKeePassDatabase
     )
+    <#
+        .SYNOPSIS
+        Setup KeePass for Liquibase use
+
+        .DESCRIPTION
+        Sets up the KeePass database for use in getting passwords
+
+        .PARAMETER PathToKeePassDatabase
+        Specifies the path to your KeePass database
+
+        .INPUTS
+        None. 
+
+        .OUTPUTS
+        None.
+
+        .EXAMPLE
+        PS> SetupKeePass
+
+    #>
+
     $p = Convert-Path -Path $PathToKeePassDatabase
     New-KeePassDatabaseConfiguration -DatabaseProfileName 'Liquibase' -DatabasePath $p -UseNetworkAccount
 }
 function ClearKeePassConfig{
+            <#
+        .SYNOPSIS
+        Removes liquibase keepass database 
+
+        .DESCRIPTION
+        Removes liquibase keepass database 
+
+        .INPUTS
+        None. 
+
+        .OUTPUTS
+        None.
+
+        .EXAMPLE
+        PS> ClearKeePassConfig
+
+    #>
     Remove-KeePassDatabaseConfiguration -DatabaseProfileName "Liquibase"
 }
 
@@ -15,15 +53,51 @@ function LBSwitchEnvironments {
     param (
         $Environment
     )
-    $checkKeePass = CheckKeePassConfig
-    if($checkKeePass -eq $true){
-        $dbEntry = Get-KeePassEntry -AsPlainText -DatabaseProfileName TestLB -KeePassEntryGroupPath "Liquibase/Environments" | Where-Object { $_.Title -eq $Environment } | Select-Object -First 1
+        <#
+        .SYNOPSIS
+        Pull connection info from KeePass for Environment
+
+        .DESCRIPTION
+        Sets up environment variables for liquibase using the environment specified
+
+        .PARAMETER Environment
+        Specifies the environment name
+
+        .INPUTS
+        None. 
+
+        .OUTPUTS
+        None.
+
+        .EXAMPLE
+        PS> LBSwitchEnvironments local
+
+    #>
+    $config = Get-KeePassDatabaseConfiguration 
+    if($null -eq $config){
+        Write-Output "KeePass Database isn't set up, please run SetupKeePass"
+    }
+    else{
+        #this gets the keePass entry, find the item with the title and selects the first
+        $dbEntry = Get-KeePassEntry -AsPlainText -DatabaseProfileName "Liquibase" -KeePassEntryGroupPath "Liquibase/Environments" | Where-Object { $_.Title -eq $Environment } | Select-Object -First 1
         if($null -ne $dbEntry){
-            Set-Variable -Name LIQUIBASE_URL -Value $dbEntry.Url
-            Set-Variable -Name LIQUIBASE_USERNAME -Value $dbEntry.UserName
-            Set-Variable -Name LIQUIBASE_PASSWORD -Value $dbEntry.Password
-            Set-Variable -Name CURRENT_ENV -Value $Environment
-            Write-Output "Liquibase Variables set for $CURRENT_ENV"
+            #check that there are no template urls, if there is, we need to pull from the liquibase.properties file
+            if($dbEntry.Url -match '{{liquibase-database}}'){
+                Write-Output "Template URL Found, pulling database from properties file"
+                if(Test-Path -Path $pwd\liquibase.properties){
+                    $c = Get-Content -Path $pwd\liquibase.properties 
+                    $dbName = $c -match 'liquibase.database=.+' -replace 'liquibase.database=', ''
+                    $Env:LIQUIBASE_COMMAND_URL = $dbEntry.Url -replace "{{liquibase-database}}", $dbName
+                }
+            }
+            else{
+                $Env:LIQUIBASE_COMMAND_URL = $dbEntry.Url 
+            }
+            
+            $Env:LIQUIBASE_COMMAND_USERNAME = $dbEntry.UserName 
+            $Env:LIQUIBASE_COMMAND_PASSWORD = $dbEntry.Password 
+            $Env:CURRENT_ENV = $Environment 
+            Write-Output "Liquibase Variables set for $Env:CURRENT_ENV"
         }
         else{
             Write-Output "Database Entry for $Environment not found!"
@@ -32,21 +106,54 @@ function LBSwitchEnvironments {
 }
 
 function LBGetEnvironment {
-    Write-Output "Environment set to $CURRENT_ENV"
+    <#
+        .SYNOPSIS
+        View the currently set up environment
+
+        .DESCRIPTION
+        View the currently set up environment
+
+        .INPUTS
+        None. 
+
+        .OUTPUTS
+        A string
+
+        .EXAMPLE
+        PS> LBGetEnvironment
+        Environment set to local
+
+    #>
+    if($null -ne $CURRENT_ENV){
+        Write-Output "Environment set to $CURRENT_ENV"
+    }
+    else{
+        Write-Output "Environment not set"
+    }
 }
 
 function LBClearEnvironment {
-    Remove-Variable -Name LIQUIBASE_URL
-    Remove-Variable -Name LIQUIBASE_USERNAME
-    Remove-Variable -Name LIQUIBASE_PASSWORD
-    Remove-Variable -Name CURRENT_ENV
-}
+    <#
+        .SYNOPSIS
+        Clears environment variables for liquibase
 
-function CheckKeePassConfig {
-    $config = Get-KeePassDatabaseConfiguration
-    if($null -eq $config){
-        Write-Output "KeePass Database isn't set up, please run SetupKeePass"
-        return $false
-    }
-    return $true
+        .DESCRIPTION
+        Clears environment variables for liquibase
+
+        .INPUTS
+        None. 
+
+        .OUTPUTS
+        A string
+
+        .EXAMPLE
+        PS> LBClearEnvironment
+        Clearing Environment. Previous Environment was local
+
+    #>
+    Write-Output "Clearing Environment. Previous Environment was $Env:CURRENT_ENV"
+    $Env:LIQUIBASE_COMMAND_URL = ""
+    $Env:LIQUIBASE_COMMAND_USERNAME = ""
+    $Env:LIQUIBASE_COMMAND_PASSWORD = ""
+    $Env:CURRENT_ENV = ""
 }
