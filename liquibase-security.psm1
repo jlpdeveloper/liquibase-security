@@ -78,16 +78,30 @@ function LBSwitchEnvironments {
         Write-Output "KeePass Database isn't set up, please run SetupKeePass"
     }
     else{
+        $keepasPath = "Liquibase/Environments"
+        $propertiesExists = $false
+        $propertiesContent = ""
+        if(Test-Path -Path $pwd\liquibase.properties){
+            $propertiesExists = $true
+            $propertiesContent = Get-Content -Path $pwd\liquibase.properties 
+            if($propertiesContent -match 'liquibase.secret-subpath=.+'){
+                $subpath = $propertiesContent -replace 'secret-subpath=', ''
+                $subpath = $subpath -replace '\/+$', ''
+                $keepasPath +=  $subpath + "/"
+            }
+        }
+
         #this gets the keePass entry, find the item with the title and selects the first
-        $dbEntry = Get-KeePassEntry -AsPlainText -DatabaseProfileName "Liquibase" -KeePassEntryGroupPath "Liquibase/Environments" | Where-Object { $_.Title -eq $Environment } | Select-Object -First 1
+        $dbEntry = Get-KeePassEntry -AsPlainText -DatabaseProfileName "Liquibase" -KeePassEntryGroupPath $keepasPath | Where-Object { $_.Title -eq $Environment } | Select-Object -First 1
         if($null -ne $dbEntry){
             #check that there are no template urls, if there is, we need to pull from the liquibase.properties file
             if($dbEntry.Url -match '{{liquibase-database}}'){
                 Write-Output "Template URL Found, pulling database from properties file"
-                if(Test-Path -Path $pwd\liquibase.properties){
-                    $c = Get-Content -Path $pwd\liquibase.properties 
-                    $dbName = $c -match 'liquibase.database=.+' -replace 'liquibase.database=', ''
-                    $Env:LIQUIBASE_COMMAND_URL = $dbEntry.Url -replace "{{liquibase-database}}", $dbName
+                if($propertiesExists){
+                    if($propertiesContent -match 'liquibase.database=.+'){
+                        $dbName = $propertiesContent -replace 'liquibase.database=', ''
+                        $Env:LIQUIBASE_COMMAND_URL = $dbEntry.Url -replace "{{liquibase-database}}", $dbName
+                    }
                 }
             }
             else{
