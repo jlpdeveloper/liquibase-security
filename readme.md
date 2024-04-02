@@ -5,7 +5,12 @@ This project was developed to eliminate the security issue of having usernames a
 ## Setup
 - Download KeePass 2
 - Setup a new database named Liquibase
+   - File -> New
+   - Select the location for the database file. This will open the "Create Composite Key" Dialog
+   - Uncheck the master password option
+   - Check the "Show Expert Options" option
    - Set the Authentication Method to "Windows Account"
+   ![compositekeydialog](./images/CreateCompositeMasterKey.png)
    - Add an `Environments` Group
    - Add an entry with a title corresponding to each environment. Your url should be the jdbc url that you would use in the liquibase properties file
 
