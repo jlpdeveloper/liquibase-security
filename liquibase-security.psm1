@@ -138,8 +138,8 @@ function LBGetEnvironment {
         Environment set to local
 
     #>
-    if($null -ne $CURRENT_ENV){
-        Write-Output "Environment set to $CURRENT_ENV"
+    if($null -ne $Env:CURRENT_ENV){
+        Write-Output "Environment set to $Env:CURRENT_ENV"
     }
     else{
         Write-Output "Environment not set"
