@@ -5,7 +5,12 @@ This project was developed to eliminate the security issue of having usernames a
 ## Setup
 - Download KeePass 2
 - Setup a new database named Liquibase
+   - File -> New
+   - Select the location for the database file. This will open the "Create Composite Key" Dialog
+   - Uncheck the master password option
+   - Check the "Show Expert Options" option
    - Set the Authentication Method to "Windows Account"
+   ![compositekeydialog](./images/CreateCompositeMasterKey.png)
    - Add an `Environments` Group
    - Add an entry with a title corresponding to each environment. Your url should be the jdbc url that you would use in the liquibase properties file
 
@@ -16,6 +21,12 @@ At this point you should have a database that looks like the following:
 ```bash
 liquibase.database=your-database-name
 ```
+
+*Note* you may now specify a subpath in the liquibase properties file a KeePass sub path. For example if your secret is in `Liquibase/Environments/MySql`, you can specify the following to make it use that path
+```bash
+liquibase.secret.subpath=MySql
+```
+
 - Import the module to your powershell instance (I personally use an import in my profile)
 - Your first time setup you'll need to run the following command:
 ```bash
@@ -36,3 +47,11 @@ To clear the environment, use the `LBClearEnvironment` command
 - Your liquibase.properties file should only requires
    - your changelog file
    - your database name
+
+
+## Release Notes
+
+### *V1.1.0*
+
+- Added `liquibase.secret.subpath` as an option to add to liquibase properties to expand where to put the secrets in KeePass (`Liquibase/Environments` is still required as root)
+- Reworked the code for the database name templating since that code is similar to secret subpath code
