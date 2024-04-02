@@ -84,10 +84,10 @@ function LBSwitchEnvironments {
         if(Test-Path -Path $pwd\liquibase.properties){
             $propertiesExists = $true
             $propertiesContent = Get-Content -Path $pwd\liquibase.properties 
-            if($propertiesContent -match 'liquibase.secret-subpath=.+'){
-                $subpath = $propertiesContent -replace 'secret-subpath=', ''
+            if($propertiesContent -match 'liquibase.secret.subpath=.+'){
+                $subpath = $propertiesContent -match 'liquibase.secret.subpath=.+' -replace 'liquibase.secret.subpath=', ''
                 $subpath = $subpath -replace '\/+$', ''
-                $keepasPath +=  $subpath + "/"
+                $keepasPath += '/' + $subpath
             }
         }
 
@@ -99,7 +99,7 @@ function LBSwitchEnvironments {
                 Write-Output "Template URL Found, pulling database from properties file"
                 if($propertiesExists){
                     if($propertiesContent -match 'liquibase.database=.+'){
-                        $dbName = $propertiesContent -replace 'liquibase.database=', ''
+                        $dbName = $propertiesContent -match 'liquibase.database=.+' -replace 'liquibase.database=', ''
                         $Env:LIQUIBASE_COMMAND_URL = $dbEntry.Url -replace "{{liquibase-database}}", $dbName
                     }
                 }
